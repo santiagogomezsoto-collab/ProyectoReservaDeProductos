@@ -52,7 +52,7 @@ public class Application {
                 break;
         }
 
-        window.setSize(800, 500);
+        window.setSize(1200, 750);
         window.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         window.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override

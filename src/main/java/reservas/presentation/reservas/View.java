@@ -31,6 +31,8 @@ public class View implements PropertyChangeListener {
     Model model;
 
     public View() {
+        System.out.println("");
+        System.out.println("");
         for (int h = 6; h <= 22; h++) {
             horaInicioFld.addItem(LocalTime.of(h, 0));
             horaInicioFld.addItem(LocalTime.of(h, 30));

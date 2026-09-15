@@ -157,8 +157,11 @@ public class View implements PropertyChangeListener {
 
         if (categoriaFld.getSelectedItem() == null) {
             valid = false;
+            categoriaFld.setBackground(Application.BACKGROUND_ERROR);
             categoriaFld.setToolTipText("Categoria requerida");
+            JOptionPane.showMessageDialog(panel, "Debe seleccionar una categoria", "Error", JOptionPane.ERROR_MESSAGE);
         } else {
+            categoriaFld.setBackground(null);
             categoriaFld.setToolTipText(null);
         }
 

@@ -28,7 +28,7 @@ public class TableModel extends AbstractTableModel<Recurso> implements javax.swi
             case ID:
                 return e.getId();
             case CATEGORIA:
-                return e.getCategoria().getDescripcion();
+                return e.getCategoria() != null ? e.getCategoria().getDescripcion() : "";
             case DESCRIPCION:
                 return e.getDescripcion();
             default:

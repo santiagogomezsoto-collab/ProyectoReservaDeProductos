@@ -1,5 +1,6 @@
 package reservas.presentation.reservas;
 
+import reservas.ia.ReservaExtraccion;
 import reservas.logic.CategoriaRecurso;
 import reservas.logic.Funcionario;
 import reservas.logic.Reserva;
@@ -8,6 +9,7 @@ import reservas.presentation.Sesion;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,7 +43,32 @@ public class Controller {
     }
 
     public void extraerConIA(String frase) throws Exception {
-        NuevaReservaData datos = reservas.ia.IAExtractorService.instance().extraer(frase, model.getCategorias());
+        ReservaExtraccion r = Service.instance().extraerReserva(frase);
+
+        NuevaReservaData datos = new NuevaReservaData();
+        datos.setActividad(r.getActividad());
+        if (r.getFecha() != null && !r.getFecha().isEmpty()) {
+            datos.setFecha(LocalDate.parse(r.getFecha()));
+        }
+        if (r.getHoraInicio() != null && !r.getHoraInicio().isEmpty()) {
+            datos.setHoraInicio(LocalTime.parse(r.getHoraInicio()));
+        }
+        if (r.getHoraFinal() != null && !r.getHoraFinal().isEmpty()) {
+            datos.setHoraFin(LocalTime.parse(r.getHoraFinal()));
+        }
+
+        List<CategoriaRecurso> seleccionadas = new ArrayList<>();
+        if (r.getCategoriasRecurso() != null) {
+            for (String nombreCategoria : r.getCategoriasRecurso()) {
+                for (CategoriaRecurso c : model.getCategorias()) {
+                    if (c.getDescripcion().equalsIgnoreCase(nombreCategoria)) {
+                        seleccionadas.add(c);
+                    }
+                }
+            }
+        }
+        datos.setCategoriasSeleccionadas(seleccionadas);
+
         model.setCurrent(datos);
     }
 

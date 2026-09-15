@@ -16,7 +16,6 @@ public class View extends JDialog {
 
     Controller controller;
     Model model;
-    private JPanel panel1;
 
     public View() {
         setModal(true);

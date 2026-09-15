@@ -73,4 +73,8 @@ public class View implements PropertyChangeListener {
         }
         this.panel.revalidate();
     }
+
+    private void createUIComponents() {
+        // TODO: place custom component creation code here
+    }
 }

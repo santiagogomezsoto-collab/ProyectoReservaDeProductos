@@ -2,6 +2,8 @@ package reservas.logic;
 
 import reservas.data.Data;
 import reservas.data.XmlPersister;
+import reservas.ia.ReservaExtraccion;
+import reservas.ia.ReservaExtractorService;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -322,5 +324,22 @@ public class Service {
                 .collect(Collectors.groupingBy(
                         r -> r.getFecha().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
                         TreeMap::new, Collectors.counting()));
+    }
+
+    // =============== INTELIGENCIA ARTIFICIAL ===============
+    public ReservaExtraccion extraerReserva(String frase) {
+        dev.langchain4j.model.openai.OpenAiChatModel aiModel = dev.langchain4j.model.openai.OpenAiChatModel.builder()
+                .baseUrl("http://langchain4j.dev/demo/openai/v1") // LangChain4j free proxy
+                .apiKey("demo")                                    // Free demo key
+                .modelName("gpt-4o-mini")                          // Restricted model
+                .build();
+        ReservaExtractorService aiService = dev.langchain4j.service.AiServices.create(
+                ReservaExtractorService.class, aiModel);
+
+        String listaCategorias = data.getCategorias().stream()
+                .map(CategoriaRecurso::getDescripcion)
+                .collect(Collectors.joining(", "));
+
+        return aiService.extraer(frase, listaCategorias, LocalDate.now().toString());
     }
 }
