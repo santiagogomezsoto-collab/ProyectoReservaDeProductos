@@ -24,6 +24,7 @@ public class Model extends AbstractModel {
         horas = new ArrayList<>();
         for (int h = 6; h <= 22; h++) {
             horas.add(LocalTime.of(h, 0));
+            horas.add(LocalTime.of(h, 30));
         }
         recursos = new ArrayList<>();
         reservas = new ArrayList<>();
