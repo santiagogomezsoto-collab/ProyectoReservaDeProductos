@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class TableModel extends AbstractTableModel {
     private List<LocalTime> horas;
@@ -45,13 +46,10 @@ public class TableModel extends AbstractTableModel {
         LocalDate dia = dias.get(col - 1);
         LocalTime hora = horas.get(row);
 
-        Reserva reserva = reservas.stream()
+        return reservas.stream()
                 .filter(r -> r.getFecha().equals(dia))
                 .filter(r -> !hora.isBefore(r.getHoraInicio()) && hora.isBefore(r.getHoraFin()))
-                .findFirst()
-                .orElse(null);
-
-        if (reserva == null) return "";
-        return reserva.getActividad() + " (" + reserva.getFuncionario().getNombre() + ")";
+                .map(r -> r.getActividad() + " (" + r.getFuncionario().getNombre() + ")")
+                .collect(Collectors.joining(" | "));
     }
 }

@@ -112,6 +112,9 @@ public class Service {
     public void delete(Funcionario e) throws Exception {
         Funcionario result = findFuncionario(e.getId());
         if (result == null) throw new Exception("Funcionario no existe");
+        if (data.getReservas().stream().anyMatch(r -> r.getFuncionario() != null
+                && result.getId().equals(r.getFuncionario().getId())))
+            throw new Exception("No se puede eliminar el funcionario porque tiene reservas asociadas");
         data.getUsuarios().remove(result);
     }
 
@@ -156,6 +159,9 @@ public class Service {
 
     public void delete(CategoriaRecurso e) throws Exception {
         CategoriaRecurso result = read(e);
+        if (data.getRecursos().stream().anyMatch(r -> r.getCategoria() != null
+                && result.getId().equals(r.getCategoria().getId())))
+            throw new Exception("No se puede eliminar la categoría porque tiene recursos asociados");
         data.getCategorias().remove(result);
     }
 
@@ -209,6 +215,9 @@ public class Service {
 
     public void delete(Recurso e) throws Exception {
         Recurso result = read(e);
+        if (data.getReservas().stream().anyMatch(r -> r.getRecursos().stream()
+                .anyMatch(rec -> rec != null && result.getId().equals(rec.getId()))))
+            throw new Exception("No se puede eliminar el recurso porque tiene reservas asociadas");
         data.getRecursos().remove(result);
     }
 
@@ -237,6 +246,10 @@ public class Service {
         if (horaFin.isBefore(horaInicio) || horaFin.equals(horaInicio))
             throw new Exception("La hora de fin debe ser posterior a la hora de inicio");
 
+        LocalDate hoy = LocalDate.now();
+        if (fecha.isBefore(hoy) || (fecha.equals(hoy) && !horaInicio.isAfter(LocalTime.now())))
+            throw new Exception("No se puede crear una reserva en una fecha u hora pasada");
+
         List<CategoriaRecurso> noDisponibles = categoriasSolicitadas.stream()
                 .filter(cat -> buscarRecursoLibre(cat, fecha, horaInicio, horaFin, null) == null)
                 .collect(Collectors.toList());
@@ -262,8 +275,10 @@ public class Service {
                 .findFirst()
                 .orElse(null);
         if (result == null) throw new Exception("Reserva no existe");
-        if (result.getFecha().isBefore(LocalDate.now()))
-            throw new Exception("No se puede cancelar una reserva pasada");
+        LocalDate hoy = LocalDate.now();
+        if (result.getFecha().isBefore(hoy)
+                || (result.getFecha().equals(hoy) && !result.getHoraInicio().isAfter(LocalTime.now())))
+            throw new Exception("No se puede cancelar una reserva pasada o que ya comenzó");
         result.setEstado(Reserva.CANCELADA);
     }
 

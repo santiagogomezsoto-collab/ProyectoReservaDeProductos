@@ -34,6 +34,10 @@ public class View implements PropertyChangeListener {
                     JOptionPane.showMessageDialog(panel, "Seleccione ambas fechas", "", JOptionPane.INFORMATION_MESSAGE);
                     return;
                 }
+                if (desdeRecursosFld.getDate().isAfter(hastaRecursosFld.getDate())) {
+                    JOptionPane.showMessageDialog(panel, "La fecha desde no puede ser posterior a la fecha hasta", "", JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
                 controller.cargarRecursos(desdeRecursosFld.getDate(), hastaRecursosFld.getDate());
             }
         });
@@ -43,6 +47,10 @@ public class View implements PropertyChangeListener {
             public void actionPerformed(ActionEvent e) {
                 if (desdeActividadesFld.getDate() == null || hastaActividadesFld.getDate() == null) {
                     JOptionPane.showMessageDialog(panel, "Seleccione ambas fechas", "", JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
+                if (desdeActividadesFld.getDate().isAfter(hastaActividadesFld.getDate())) {
+                    JOptionPane.showMessageDialog(panel, "La fecha desde no puede ser posterior a la fecha hasta", "", JOptionPane.INFORMATION_MESSAGE);
                     return;
                 }
                 controller.cargarActividades(desdeActividadesFld.getDate(), hastaActividadesFld.getDate());
