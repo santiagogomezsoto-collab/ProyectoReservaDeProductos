@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-public class Service {
+public class Service implements IService {
     private static Service theInstance;
 
     public static Service instance() {
@@ -62,6 +62,7 @@ public class Service {
     }
 
     // =============== LOGIN ===============
+    @Override
     public Usuario login(String id, String clave) throws Exception {
         Usuario result = data.getUsuarios().stream()
                 .filter(u -> u.getId().equals(id))
@@ -72,6 +73,7 @@ public class Service {
         return result;
     }
 
+    @Override
     public void changePassword(String id, String claveActual, String claveNueva) throws Exception {
         Usuario u = data.getUsuarios().stream()
                 .filter(i -> i.getId().equals(id))
@@ -83,6 +85,7 @@ public class Service {
     }
 
     // =============== FUNCIONARIOS ===============
+    @Override
     public void create(Funcionario e) throws Exception {
         Usuario result = data.getUsuarios().stream()
                 .filter(i -> i.getId().equals(e.getId()))
@@ -102,6 +105,7 @@ public class Service {
         throw new Exception("Funcionario no existe");
     }
 
+    @Override
     public void update(Funcionario e) throws Exception {
         Funcionario result = findFuncionario(e.getId());
         if (result == null) throw new Exception("Funcionario no existe");
@@ -109,6 +113,7 @@ public class Service {
         result.setTelefono(e.getTelefono());
     }
 
+    @Override
     public void delete(Funcionario e) throws Exception {
         Funcionario result = findFuncionario(e.getId());
         if (result == null) throw new Exception("Funcionario no existe");
@@ -118,6 +123,7 @@ public class Service {
         data.getUsuarios().remove(result);
     }
 
+    @Override
     public List<Funcionario> search(Funcionario e) {
         return data.getUsuarios().stream()
                 .filter(u -> u instanceof Funcionario)
@@ -138,6 +144,7 @@ public class Service {
     }
 
     // =============== CATEGORIAS DE RECURSO ===============
+    @Override
     public void create(CategoriaRecurso e) throws Exception {
         e.setId(nextCategoriaId());
         data.getCategorias().add(e);
@@ -152,11 +159,13 @@ public class Service {
         throw new Exception("Categoria no existe");
     }
 
+    @Override
     public void update(CategoriaRecurso e) throws Exception {
         CategoriaRecurso result = read(e);
         result.setDescripcion(e.getDescripcion());
     }
 
+    @Override
     public void delete(CategoriaRecurso e) throws Exception {
         CategoriaRecurso result = read(e);
         if (data.getRecursos().stream().anyMatch(r -> r.getCategoria() != null
@@ -165,6 +174,7 @@ public class Service {
         data.getCategorias().remove(result);
     }
 
+    @Override
     public List<CategoriaRecurso> search(CategoriaRecurso e) {
         return data.getCategorias().stream()
                 .filter(i -> i.getDescripcion().toLowerCase().contains(e.getDescripcion().toLowerCase()))
@@ -172,6 +182,7 @@ public class Service {
                 .collect(Collectors.toList());
     }
 
+    @Override
     public List<CategoriaRecurso> findAllCategorias() {
         return data.getCategorias();
     }
@@ -186,6 +197,7 @@ public class Service {
     }
 
     // =============== RECURSOS ===============
+    @Override
     public void create(Recurso e) throws Exception {
         Recurso result = data.getRecursos().stream()
                 .filter(i -> i.getId().equals(e.getId()))
@@ -207,12 +219,14 @@ public class Service {
         throw new Exception("Recurso no existe");
     }
 
+    @Override
     public void update(Recurso e) throws Exception {
         Recurso result = read(e);
         result.setCategoria(e.getCategoria());
         result.setDescripcion(e.getDescripcion());
     }
 
+    @Override
     public void delete(Recurso e) throws Exception {
         Recurso result = read(e);
         if (data.getReservas().stream().anyMatch(r -> r.getRecursos().stream()
@@ -221,6 +235,7 @@ public class Service {
         data.getRecursos().remove(result);
     }
 
+    @Override
     public List<Recurso> search(CategoriaRecurso categoria, String descripcion) {
         return data.getRecursos().stream()
                 .filter(r -> categoria == null || categoria.getId() == null || categoria.getId().isEmpty()
@@ -231,6 +246,7 @@ public class Service {
     }
 
     // =============== RESERVAS ===============
+    @Override
     public List<Reserva> findReservas(Funcionario funcionario) {
         return data.getReservas().stream()
                 .filter(r -> r.getFuncionario().getId().equals(funcionario.getId()))
@@ -238,6 +254,7 @@ public class Service {
                 .collect(Collectors.toList());
     }
 
+    @Override
     public Reserva crearReserva(Funcionario funcionario, String actividad, LocalDate fecha,
                                 LocalTime horaInicio, LocalTime horaFin,
                                 List<CategoriaRecurso> categoriasSolicitadas) throws Exception {
@@ -269,6 +286,7 @@ public class Service {
         return reserva;
     }
 
+    @Override
     public void cancelarReserva(Reserva e) throws Exception {
         Reserva result = data.getReservas().stream()
                 .filter(i -> i.getId().equals(e.getId()))
@@ -310,6 +328,7 @@ public class Service {
     }
 
     // =============== CALENDARIZACION / ACTIVIDADES ===============
+    @Override
     public List<Reserva> findReservasActivasPorFecha(LocalDate fecha) {
         return data.getReservas().stream()
                 .filter(r -> r.getEstado().equals(Reserva.ACTIVA))
@@ -317,6 +336,7 @@ public class Service {
                 .collect(Collectors.toList());
     }
 
+    @Override
     public List<Reserva> findReservasActivasPorSemana(LocalDate inicioSemana, LocalDate finSemana) {
         return data.getReservas().stream()
                 .filter(r -> r.getEstado().equals(Reserva.ACTIVA))
@@ -325,6 +345,7 @@ public class Service {
     }
 
     // =============== ESTADISTICAS ===============
+    @Override
     public Map<String, Long> estadisticasRecursosPorCategoria(LocalDate desde, LocalDate hasta) {
         List<Reserva> reservas = findReservasActivasPorSemana(desde, hasta);
         return reservas.stream()
@@ -333,6 +354,7 @@ public class Service {
                         TreeMap::new, Collectors.counting()));
     }
 
+    @Override
     public Map<LocalDate, Long> estadisticasActividadesPorSemana(LocalDate desde, LocalDate hasta) {
         List<Reserva> reservas = findReservasActivasPorSemana(desde, hasta);
         return reservas.stream()
@@ -342,6 +364,7 @@ public class Service {
     }
 
     // =============== INTELIGENCIA ARTIFICIAL ===============
+    @Override
     public ReservaExtraccion extraerReserva(String frase) {
         dev.langchain4j.model.openai.OpenAiChatModel aiModel = dev.langchain4j.model.openai.OpenAiChatModel.builder()
                 .baseUrl("http://langchain4j.dev/demo/openai/v1") // LangChain4j free proxy
