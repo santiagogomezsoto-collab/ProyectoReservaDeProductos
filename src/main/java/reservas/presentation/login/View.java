@@ -45,11 +45,7 @@ public class View extends JDialog {
         cambiarClaveBtn.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                reservas.presentation.cambiarclave.View cambiarView = new reservas.presentation.cambiarclave.View();
-                reservas.presentation.cambiarclave.Model cambiarModel = new reservas.presentation.cambiarclave.Model();
-                new reservas.presentation.cambiarclave.Controller(cambiarView, cambiarModel);
-                cambiarView.setLocationRelativeTo(panel);
-                cambiarView.setVisible(true);
+                controller.abrirCambioClave();
             }
         });
 

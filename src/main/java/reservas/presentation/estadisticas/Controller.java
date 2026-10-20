@@ -5,7 +5,7 @@ import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.data.category.DefaultCategoryDataset;
-import reservas.logic.Service;
+import reservas.logic.IService;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -15,8 +15,10 @@ import java.util.Map;
 public class Controller {
     View view;
     Model model;
+    private final IService service;
 
-    public Controller(View view, Model model) {
+    public Controller(View view, Model model, IService service) {
+        this.service = service;
         this.view = view;
         this.model = model;
         view.setController(this);
@@ -24,7 +26,7 @@ public class Controller {
     }
 
     public void cargarRecursos(LocalDate desde, LocalDate hasta) {
-        Map<String, Long> mapa = Service.instance().estadisticasRecursosPorCategoria(desde, hasta);
+        Map<String, Long> mapa = service.estadisticasRecursosPorCategoria(desde, hasta);
         List<CategoriaCantidad> lista = new ArrayList<>();
         for (Map.Entry<String, Long> e : mapa.entrySet()) {
             lista.add(new CategoriaCantidad(e.getKey(), e.getValue()));
@@ -33,7 +35,7 @@ public class Controller {
     }
 
     public void cargarActividades(LocalDate desde, LocalDate hasta) {
-        Map<LocalDate, Long> mapa = Service.instance().estadisticasActividadesPorSemana(desde, hasta);
+        Map<LocalDate, Long> mapa = service.estadisticasActividadesPorSemana(desde, hasta);
         List<SemanaCantidad> lista = new ArrayList<>();
         for (Map.Entry<LocalDate, Long> e : mapa.entrySet()) {
             lista.add(new SemanaCantidad(e.getKey(), e.getValue()));

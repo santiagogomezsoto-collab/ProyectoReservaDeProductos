@@ -1,12 +1,14 @@
 package reservas.presentation.cambiarclave;
 
-import reservas.logic.Service;
+import reservas.logic.IService;
 
 public class Controller {
     View view;
     Model model;
+    private final IService service;
 
-    public Controller(View view, Model model) {
+    public Controller(View view, Model model, IService service) {
+        this.service = service;
         this.view = view;
         this.model = model;
         view.setController(this);
@@ -14,6 +16,6 @@ public class Controller {
     }
 
     public void cambiarClave(String id, String claveActual, String claveNueva) throws Exception {
-        Service.instance().changePassword(id, claveActual, claveNueva);
+        service.changePassword(id, claveActual, claveNueva);
     }
 }

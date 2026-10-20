@@ -2,7 +2,7 @@ package reservas.presentation.calendarizacion;
 
 import reservas.logic.CategoriaRecurso;
 import reservas.logic.Reserva;
-import reservas.logic.Service;
+import reservas.logic.IService;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -10,18 +10,20 @@ import java.util.List;
 public class Controller {
     View view;
     Model model;
+    private final IService service;
 
-    public Controller(View view, Model model) {
+    public Controller(View view, Model model, IService service) {
+        this.service = service;
         this.view = view;
         this.model = model;
         view.setController(this);
         view.setModel(model);
-        model.setCategorias(Service.instance().findAllCategorias());
+        model.setCategorias(service.findAllCategorias());
     }
 
     public void cargar(CategoriaRecurso categoria, LocalDate fecha) {
-        List<Reserva> reservas = Service.instance().findReservasActivasPorFecha(fecha);
-        model.setMatriz(Service.instance().search(categoria, ""), reservas);
+        List<Reserva> reservas = service.findReservasActivasPorFecha(fecha);
+        model.setMatriz(service.search(categoria, ""), reservas);
     }
 
     public void print() throws Exception {

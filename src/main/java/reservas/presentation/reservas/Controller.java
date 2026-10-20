@@ -4,7 +4,7 @@ import reservas.ia.ReservaExtraccion;
 import reservas.logic.CategoriaRecurso;
 import reservas.logic.Funcionario;
 import reservas.logic.Reserva;
-import reservas.logic.Service;
+import reservas.logic.IService;
 import reservas.presentation.Sesion;
 
 import java.time.LocalDate;
@@ -16,26 +16,28 @@ import java.util.stream.Collectors;
 public class Controller {
     View view;
     Model model;
+    private final IService service;
 
-    public Controller(View view, Model model) {
+    public Controller(View view, Model model, IService service) {
+        this.service = service;
         this.view = view;
         this.model = model;
         view.setController(this);
         view.setModel(model);
-        model.setCategorias(Service.instance().findAllCategorias());
-        model.setList(Service.instance().findReservas((Funcionario) Sesion.getUsuario()));
+        model.setCategorias(service.findAllCategorias());
+        model.setList(service.findReservas((Funcionario) Sesion.getUsuario()));
     }
 
     public void reservar(String actividad, LocalDate fecha, LocalTime horaInicio, LocalTime horaFin,
                          List<CategoriaRecurso> categorias) throws Exception {
-        Service.instance().crearReserva((Funcionario) Sesion.getUsuario(), actividad, fecha, horaInicio, horaFin, categorias);
+        service.crearReserva((Funcionario) Sesion.getUsuario(), actividad, fecha, horaInicio, horaFin, categorias);
         model.setCurrent(new NuevaReservaData());
-        model.setList(Service.instance().findReservas((Funcionario) Sesion.getUsuario()));
+        model.setList(service.findReservas((Funcionario) Sesion.getUsuario()));
     }
 
     public void cancelar(Reserva e) throws Exception {
-        Service.instance().cancelarReserva(e);
-        model.setList(Service.instance().findReservas((Funcionario) Sesion.getUsuario()));
+        service.cancelarReserva(e);
+        model.setList(service.findReservas((Funcionario) Sesion.getUsuario()));
     }
 
     public void limpiar() {
@@ -43,7 +45,7 @@ public class Controller {
     }
 
     public void extraerConIA(String frase) throws Exception {
-        ReservaExtraccion r = Service.instance().extraerReserva(frase);
+        ReservaExtraccion r = service.extraerReserva(frase);
 
         NuevaReservaData datos = new NuevaReservaData();
         datos.setActividad(r.getActividad());

@@ -15,7 +15,7 @@ import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.borders.Border;
 import reservas.logic.CategoriaRecurso;
 import reservas.logic.Recurso;
-import reservas.logic.Service;
+import reservas.logic.IService;
 
 import java.awt.*;
 import java.io.File;
@@ -23,36 +23,38 @@ import java.io.File;
 public class Controller {
     View view;
     Model model;
+    private final IService service;
 
-    public Controller(View view, Model model) {
+    public Controller(View view, Model model, IService service) {
+        this.service = service;
         this.view = view;
         this.model = model;
         view.setController(this);
         view.setModel(model);
-        model.setCategorias(Service.instance().findAllCategorias());
-        model.setList(Service.instance().search(null, ""));
+        model.setCategorias(service.findAllCategorias());
+        model.setList(service.search(null, ""));
     }
 
     public void create(Recurso e) throws Exception {
-        Service.instance().create(e);
+        service.create(e);
         model.setCurrent(new Recurso());
-        model.setList(Service.instance().search(null, ""));
+        model.setList(service.search(null, ""));
     }
 
     public void update(Recurso e) throws Exception {
-        Service.instance().update(e);
+        service.update(e);
         model.setCurrent(new Recurso());
-        model.setList(Service.instance().search(null, ""));
+        model.setList(service.search(null, ""));
     }
 
     public void delete(Recurso e) throws Exception {
-        Service.instance().delete(e);
+        service.delete(e);
         model.setCurrent(new Recurso());
-        model.setList(Service.instance().search(null, ""));
+        model.setList(service.search(null, ""));
     }
 
     public void search(CategoriaRecurso categoria, String descripcion) {
-        model.setList(Service.instance().search(categoria, descripcion));
+        model.setList(service.search(categoria, descripcion));
     }
 
     public void clear() {

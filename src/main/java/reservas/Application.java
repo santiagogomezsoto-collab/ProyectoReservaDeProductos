@@ -1,10 +1,14 @@
 package reservas;
 
+import reservas.logic.IService;
+import reservas.logic.Service;
 import reservas.presentation.Sesion;
 
 import javax.swing.*;
 
 public class Application {
+    private static IService service;
+
     public static void main(String[] args) {
         try {
             UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
@@ -12,6 +16,7 @@ public class Application {
             ex.printStackTrace();
         }
 
+        service = Service.instance();
         doLogin();
         if (Sesion.isLoggedIn()) {
             doRun();
@@ -24,7 +29,7 @@ public class Application {
         loginView.pack();
         loginView.setLocationRelativeTo(null);
         reservas.presentation.login.Model loginModel = new reservas.presentation.login.Model();
-        reservas.presentation.login.Controller loginController = new reservas.presentation.login.Controller(loginView, loginModel);
+        reservas.presentation.login.Controller loginController = new reservas.presentation.login.Controller(loginView, loginModel, service);
         loginView.setVisible(true);
     }
 
@@ -68,49 +73,49 @@ public class Application {
     private static JPanel buildReservasTab() {
         reservas.presentation.reservas.View view = new reservas.presentation.reservas.View();
         reservas.presentation.reservas.Model model = new reservas.presentation.reservas.Model();
-        new reservas.presentation.reservas.Controller(view, model);
+        new reservas.presentation.reservas.Controller(view, model, service);
         return view.getPanel();
     }
 
     private static JPanel buildFuncionariosTab() {
         reservas.presentation.funcionarios.View view = new reservas.presentation.funcionarios.View();
         reservas.presentation.funcionarios.Model model = new reservas.presentation.funcionarios.Model();
-        new reservas.presentation.funcionarios.Controller(view, model);
+        new reservas.presentation.funcionarios.Controller(view, model, service);
         return view.getPanel();
     }
 
     private static JPanel buildCategoriasTab() {
         reservas.presentation.categorias.View view = new reservas.presentation.categorias.View();
         reservas.presentation.categorias.Model model = new reservas.presentation.categorias.Model();
-        new reservas.presentation.categorias.Controller(view, model);
+        new reservas.presentation.categorias.Controller(view, model, service);
         return view.getPanel();
     }
 
     private static JPanel buildRecursosTab() {
         reservas.presentation.recursos.View view = new reservas.presentation.recursos.View();
         reservas.presentation.recursos.Model model = new reservas.presentation.recursos.Model();
-        new reservas.presentation.recursos.Controller(view, model);
+        new reservas.presentation.recursos.Controller(view, model, service);
         return view.getPanel();
     }
 
     private static JPanel buildCalendarizacionTab() {
         reservas.presentation.calendarizacion.View view = new reservas.presentation.calendarizacion.View();
         reservas.presentation.calendarizacion.Model model = new reservas.presentation.calendarizacion.Model();
-        new reservas.presentation.calendarizacion.Controller(view, model);
+        new reservas.presentation.calendarizacion.Controller(view, model, service);
         return view.getPanel();
     }
 
     private static JPanel buildActividadesTab() {
         reservas.presentation.actividades.View view = new reservas.presentation.actividades.View();
         reservas.presentation.actividades.Model model = new reservas.presentation.actividades.Model();
-        new reservas.presentation.actividades.Controller(view, model);
+        new reservas.presentation.actividades.Controller(view, model, service);
         return view.getPanel();
     }
 
     private static JPanel buildEstadisticasTab() {
         reservas.presentation.estadisticas.View view = new reservas.presentation.estadisticas.View();
         reservas.presentation.estadisticas.Model model = new reservas.presentation.estadisticas.Model();
-        new reservas.presentation.estadisticas.Controller(view, model);
+        new reservas.presentation.estadisticas.Controller(view, model, service);
         return view.getPanel();
     }
 

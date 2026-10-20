@@ -14,7 +14,7 @@ import com.itextpdf.layout.properties.HorizontalAlignment;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.borders.Border;
 import reservas.logic.Funcionario;
-import reservas.logic.Service;
+import reservas.logic.IService;
 
 import java.awt.*;
 import java.io.File;
@@ -22,38 +22,40 @@ import java.io.File;
 public class Controller {
     View view;
     Model model;
+    private final IService service;
 
-    public Controller(View view, Model model) {
+    public Controller(View view, Model model, IService service) {
+        this.service = service;
         this.view = view;
         this.model = model;
         view.setController(this);
         view.setModel(model);
-        model.setList(Service.instance().search(new Funcionario()));
+        model.setList(service.search(new Funcionario()));
     }
 
     public void create(Funcionario e) throws Exception {
-        Service.instance().create(e);
+        service.create(e);
         model.setCurrent(new Funcionario());
-        model.setList(Service.instance().search(new Funcionario()));
+        model.setList(service.search(new Funcionario()));
     }
 
     public void update(Funcionario e) throws Exception {
-        Service.instance().update(e);
+        service.update(e);
         model.setCurrent(new Funcionario());
-        model.setList(Service.instance().search(new Funcionario()));
+        model.setList(service.search(new Funcionario()));
     }
 
     public void delete(Funcionario e) throws Exception {
-        Service.instance().delete(e);
+        service.delete(e);
         model.setCurrent(new Funcionario());
-        model.setList(Service.instance().search(new Funcionario()));
+        model.setList(service.search(new Funcionario()));
     }
 
     public void search(String id, String nombre) {
         Funcionario e = new Funcionario();
         e.setId(id);
         e.setNombre(nombre);
-        model.setList(Service.instance().search(e));
+        model.setList(service.search(e));
     }
 
     public void clear() {

@@ -14,7 +14,7 @@ import com.itextpdf.layout.properties.HorizontalAlignment;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.borders.Border;
 import reservas.logic.CategoriaRecurso;
-import reservas.logic.Service;
+import reservas.logic.IService;
 
 import java.awt.*;
 import java.io.File;
@@ -22,37 +22,39 @@ import java.io.File;
 public class Controller {
     View view;
     Model model;
+    private final IService service;
 
-    public Controller(View view, Model model) {
+    public Controller(View view, Model model, IService service) {
+        this.service = service;
         this.view = view;
         this.model = model;
         view.setController(this);
         view.setModel(model);
-        model.setList(Service.instance().findAllCategorias());
+        model.setList(service.findAllCategorias());
     }
 
     public void create(CategoriaRecurso e) throws Exception {
-        Service.instance().create(e);
+        service.create(e);
         model.setCurrent(new CategoriaRecurso());
-        model.setList(Service.instance().findAllCategorias());
+        model.setList(service.findAllCategorias());
     }
 
     public void update(CategoriaRecurso e) throws Exception {
-        Service.instance().update(e);
+        service.update(e);
         model.setCurrent(new CategoriaRecurso());
-        model.setList(Service.instance().findAllCategorias());
+        model.setList(service.findAllCategorias());
     }
 
     public void delete(CategoriaRecurso e) throws Exception {
-        Service.instance().delete(e);
+        service.delete(e);
         model.setCurrent(new CategoriaRecurso());
-        model.setList(Service.instance().findAllCategorias());
+        model.setList(service.findAllCategorias());
     }
 
     public void search(String descripcion) {
         CategoriaRecurso e = new CategoriaRecurso();
         e.setDescripcion(descripcion);
-        model.setList(Service.instance().search(e));
+        model.setList(service.search(e));
     }
 
     public void clear() {

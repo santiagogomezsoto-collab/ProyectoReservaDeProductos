@@ -1,7 +1,7 @@
 package reservas.presentation.actividades;
 
 import reservas.logic.Reserva;
-import reservas.logic.Service;
+import reservas.logic.IService;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -12,8 +12,10 @@ import java.util.List;
 public class Controller {
     View view;
     Model model;
+    private final IService service;
 
-    public Controller(View view, Model model) {
+    public Controller(View view, Model model, IService service) {
+        this.service = service;
         this.view = view;
         this.model = model;
         view.setController(this);
@@ -29,7 +31,7 @@ public class Controller {
             dias.add(d);
         }
 
-        List<Reserva> reservas = Service.instance().findReservasActivasPorSemana(lunes, domingo);
+        List<Reserva> reservas = service.findReservasActivasPorSemana(lunes, domingo);
         model.setMatriz(dias, reservas);
     }
 
