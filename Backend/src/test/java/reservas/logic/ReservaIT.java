@@ -32,6 +32,8 @@ class ReservaIT {
 
     @Test
     void reservaCreadaSeGuardaYSeRecuperaCorrectamenteDelXml() throws Exception {
+        LocalDate hoy = LocalDate.now();
+        LocalDate futura = hoy.plusDays(10);
         CategoriaRecurso categoria = new CategoriaRecurso("", "Sala de Reuniones");
         Service.instance().create(categoria);
 
@@ -42,7 +44,7 @@ class ReservaIT {
         Service.instance().create(funcionario);
 
         Reserva reserva = Service.instance().crearReserva(funcionario, "Sesion de Planificacion",
-                LocalDate.of(2026, 9, 15), LocalTime.of(14, 0), LocalTime.of(15, 30),
+                futura, LocalTime.of(14, 0), LocalTime.of(15, 30),
                 List.of(categoria));
 
         String idReserva = reserva.getId();
@@ -58,6 +60,9 @@ class ReservaIT {
 
         Reserva reservaRecargada = reservasRecargadas.get(0);
         assertEquals(idReserva, reservaRecargada.getId());
+        assertEquals(futura, reservaRecargada.getFecha());
+        assertEquals(LocalTime.of(14, 0), reservaRecargada.getHoraInicio());
+        assertEquals(LocalTime.of(15, 30), reservaRecargada.getHoraFin());
         assertEquals("Sesion de Planificacion", reservaRecargada.getActividad());
         assertEquals(Reserva.ACTIVA, reservaRecargada.getEstado());
 
@@ -69,6 +74,8 @@ class ReservaIT {
 
     @Test
     void reservaCanceladaMantieneSuEstadoTrasGuardarYRecargar() throws Exception {
+        LocalDate hoy = LocalDate.now();
+        LocalDate futura = hoy.plusDays(10);
         CategoriaRecurso categoria = new CategoriaRecurso("", "Proyector");
         Service.instance().create(categoria);
         Service.instance().create(new Recurso("PROY-9", categoria, "Proyector portatil"));
@@ -77,7 +84,7 @@ class ReservaIT {
         Service.instance().create(funcionario);
 
         Reserva reserva = Service.instance().crearReserva(funcionario, "Capacitacion Anual",
-                LocalDate.now().plusDays(10), LocalTime.of(8, 0), LocalTime.of(9, 0),
+                futura, LocalTime.of(8, 0), LocalTime.of(9, 0),
                 List.of(categoria));
 
         Service.instance().cancelarReserva(reserva);
@@ -92,6 +99,8 @@ class ReservaIT {
 
     @Test
     void recursoAsignadoAUnaReservaNoQuedaDisponibleParaOtraEnElMismoHorario() throws Exception {
+        LocalDate hoy = LocalDate.now();
+        LocalDate futura = hoy.plusDays(10);
         CategoriaRecurso categoria = new CategoriaRecurso("", "Sala Pequena");
         Service.instance().create(categoria);
         Service.instance().create(new Recurso("SALA-P1", categoria, "Sala Pequena #1"));
@@ -101,11 +110,11 @@ class ReservaIT {
         Service.instance().create(func1);
         Service.instance().create(func2);
 
-        Service.instance().crearReserva(func1, "Reunion A", LocalDate.of(2026, 10, 1),
+        Service.instance().crearReserva(func1, "Reunion A", futura,
                 LocalTime.of(10, 0), LocalTime.of(11, 0), List.of(categoria));
 
         Exception ex = assertThrows(Exception.class, () ->
-                Service.instance().crearReserva(func2, "Reunion B", LocalDate.of(2026, 10, 1),
+                Service.instance().crearReserva(func2, "Reunion B", futura,
                         LocalTime.of(10, 30), LocalTime.of(11, 30), List.of(categoria)));
 
         assertTrue(ex.getMessage().contains("Sala Pequena"));

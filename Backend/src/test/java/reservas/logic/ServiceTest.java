@@ -87,6 +87,8 @@ class ServiceTest {
 
     @Test
     void crearReservaSinRecursosDisponiblesLanzaExcepcion() throws Exception {
+        LocalDate hoy = LocalDate.now();
+        LocalDate futura = hoy.plusDays(10);
         CategoriaRecurso cat = new CategoriaRecurso("", "Sala VIP");
         Service.instance().create(cat);
 
@@ -94,7 +96,7 @@ class ServiceTest {
         Service.instance().create(func);
 
         Exception ex = assertThrows(Exception.class, () ->
-                Service.instance().crearReserva(func, "Reunion", LocalDate.of(2026, 9, 10),
+                Service.instance().crearReserva(func, "Reunion", futura,
                         LocalTime.of(9, 0), LocalTime.of(10, 0), List.of(cat)));
 
         assertTrue(ex.getMessage().contains("Sala VIP"));
@@ -102,6 +104,8 @@ class ServiceTest {
 
     @Test
     void crearReservaConRecursoDisponibleTieneExito() throws Exception {
+        LocalDate hoy = LocalDate.now();
+        LocalDate futura = hoy.plusDays(10);
         CategoriaRecurso cat = new CategoriaRecurso("", "Laptop");
         Service.instance().create(cat);
         Service.instance().create(new Recurso("LAP-1", cat, "Laptop #1"));
@@ -110,7 +114,7 @@ class ServiceTest {
         Service.instance().create(func);
 
         Reserva reserva = Service.instance().crearReserva(func, "Capacitacion",
-                LocalDate.of(2026, 9, 10), LocalTime.of(9, 0), LocalTime.of(10, 0), List.of(cat));
+                futura, LocalTime.of(9, 0), LocalTime.of(10, 0), List.of(cat));
 
         assertEquals(1, reserva.getRecursos().size());
         assertEquals("LAP-1", reserva.getRecursos().get(0).getId());
@@ -119,6 +123,8 @@ class ServiceTest {
 
     @Test
     void cancelarReservaPasadaLanzaExcepcion() throws Exception {
+        LocalDate hoy = LocalDate.now();
+        LocalDate futura = hoy.plusDays(10);
         CategoriaRecurso cat = new CategoriaRecurso("", "Proyector");
         Service.instance().create(cat);
         Service.instance().create(new Recurso("PROY-1", cat, "Proyector #1"));
@@ -127,11 +133,32 @@ class ServiceTest {
         Service.instance().create(func);
 
         Reserva reserva = Service.instance().crearReserva(func, "Charla",
-                LocalDate.of(2020, 1, 1), LocalTime.of(9, 0), LocalTime.of(10, 0), List.of(cat));
+                futura, LocalTime.of(9, 0), LocalTime.of(10, 0), List.of(cat));
+
+        // Preparar una reserva historica solo en memoria para probar la cancelacion.
+        reserva.setFecha(hoy.minusDays(1));
 
         Exception ex = assertThrows(Exception.class, () ->
                 Service.instance().cancelarReserva(reserva));
 
-        assertEquals("No se puede cancelar una reserva pasada", ex.getMessage());
+        assertEquals("No se puede cancelar una reserva pasada o que ya comenzó", ex.getMessage());
+        assertEquals(Reserva.ACTIVA, reserva.getEstado());
+    }
+
+    @Test
+    void crearReservaEnFechaPasadaLanzaExcepcion() throws Exception {
+        LocalDate hoy = LocalDate.now();
+        CategoriaRecurso cat = new CategoriaRecurso("", "Sala");
+        Service.instance().create(cat);
+        Service.instance().create(new Recurso("SALA-1", cat, "Sala disponible"));
+        Funcionario funcionario = new Funcionario("f4", "f4", "Ana", "1111");
+        Service.instance().create(funcionario);
+
+        Exception ex = assertThrows(Exception.class, () ->
+                Service.instance().crearReserva(funcionario, "Reunion", hoy.minusDays(1),
+                        LocalTime.of(9, 0), LocalTime.of(10, 0), List.of(cat)));
+
+        assertEquals("No se puede crear una reserva en una fecha u hora pasada", ex.getMessage());
+        assertTrue(Service.instance().findReservas(funcionario).isEmpty());
     }
 }
