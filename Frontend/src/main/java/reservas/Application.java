@@ -1,22 +1,23 @@
 package reservas;
 
 import reservas.logic.IService;
-import reservas.logic.Service;
 import reservas.presentation.Sesion;
 
 import javax.swing.*;
 
 public class Application {
     private static IService service;
+    private static Runnable onClose;
 
-    public static void main(String[] args) {
+    public static void start(IService service, Runnable onClose) {
         try {
             UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
         } catch (Exception ex) {
             ex.printStackTrace();
         }
 
-        service = Service.instance();
+        Application.service = service;
+        Application.onClose = onClose;
         doLogin();
         if (Sesion.isLoggedIn()) {
             doRun();
@@ -62,7 +63,7 @@ public class Application {
         window.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowClosing(java.awt.event.WindowEvent e) {
-                reservas.logic.Service.instance().stop();
+                onClose.run();
                 System.exit(0);
             }
         });

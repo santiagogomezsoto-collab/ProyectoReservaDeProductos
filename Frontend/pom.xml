@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.example</groupId>
+    <artifactId>reservas-frontend</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <intellij.forms.version>262.10968.176</intellij.forms.version>
+    </properties>
+
+    <dependencies>
+
+        <!-- Runtime de los layouts generados desde los archivos .form. -->
+        <dependency>
+            <groupId>com.jetbrains.intellij.java</groupId>
+            <artifactId>java-gui-forms-rt</artifactId>
+            <version>${intellij.forms.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.example</groupId>
+            <artifactId>reservas-protocol</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+
+        <!-- Generacion de reportes PDF -->
+        <dependency>
+            <groupId>com.itextpdf</groupId>
+            <artifactId>kernel</artifactId>
+            <version>7.2.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.itextpdf</groupId>
+            <artifactId>layout</artifactId>
+            <version>7.2.3</version>
+        </dependency>
+
+        <!-- Selector de fechas -->
+        <dependency>
+            <groupId>com.github.lgooddatepicker</groupId>
+            <artifactId>LGoodDatePicker</artifactId>
+            <version>11.2.1</version>
+        </dependency>
+
+        <!-- Graficos de barras (Estadisticas) -->
+        <dependency>
+            <groupId>org.jfree</groupId>
+            <artifactId>jfreechart</artifactId>
+            <version>1.5.4</version>
+        </dependency>
+
+    </dependencies>
+
+
+    <repositories>
+        <repository>
+            <id>jetbrains.releases</id>
+            <url>https://www.jetbrains.com/intellij-repository/releases</url>
+        </repository>
+    </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>jetbrains.releases</id>
+            <url>https://www.jetbrains.com/intellij-repository/releases</url>
+        </pluginRepository>
+        <pluginRepository>
+            <id>jetbrains.dependencies</id>
+            <url>https://packages.jetbrains.team/maven/p/ij/intellij-dependencies</url>
+        </pluginRepository>
+    </pluginRepositories>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.2.0</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.jetbrains.intellij.java</groupId>
+                        <artifactId>java-compiler-ant-tasks</artifactId>
+                        <version>${intellij.forms.version}</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <id>instrument-swing-forms</id>
+                        <!-- Despues de javac, tambien al ejecutar mvn clean compile. -->
+                        <phase>compile</phase>
+                        <goals><goal>run</goal></goals>
+                        <configuration>
+                            <target>
+                                <taskdef name="instrumentForms"
+                                         classname="com.intellij.ant.InstrumentIdeaExtensions"
+                                         classpathref="maven.plugin.classpath"/>
+                                <instrumentForms srcdir="${project.build.sourceDirectory}"
+                                                 destdir="${project.build.outputDirectory}"
+                                                 classpathref="maven.compile.classpath"
+                                                 includeantruntime="false"
+                                                 instrumentNotNull="false"
+                                                 failonerror="true"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
