@@ -1,7 +1,11 @@
 package reservas.logic;
 
-import reservas.data.Data;
-import reservas.data.XmlPersister;
+import reservas.data.CategoriaRecursoDao;
+import reservas.data.Database;
+import reservas.data.FuncionarioDao;
+import reservas.data.RecursoDao;
+import reservas.data.ReservaDao;
+import reservas.data.UsuarioDao;
 import reservas.ia.ReservaExtraccion;
 import reservas.ia.ReservaExtractorService;
 
@@ -9,12 +13,25 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+/**
+ * Logica de negocio. Unico lugar donde viven las reglas del sistema.
+ *
+ * La persistencia ahora es MySQL: el Service no sabe SQL, le pide los datos a
+ * los DAO. Las 23 operaciones de IService conservan exactamente sus firmas y
+ * sus reglas, asi que ni los controladores del Frontend ni el Worker del
+ * servidor necesitan cambios.
+ *
+ * Nota sobre errores: las operaciones de consulta de IService no declaran
+ * throws, asi que un fallo de base de datos se informa por consola y se
+ * devuelve una coleccion vacia, igual que en el ejemplo visto en clase. Las
+ * operaciones que modifican datos si propagan el error al usuario.
+ */
 public class Service implements IService {
     private static Service theInstance;
 
@@ -23,235 +40,166 @@ public class Service implements IService {
         return theInstance;
     }
 
-    private Data data;
-    private String path;
+    private final UsuarioDao usuarioDao;
+    private final FuncionarioDao funcionarioDao;
+    private final CategoriaRecursoDao categoriaDao;
+    private final RecursoDao recursoDao;
+    private final ReservaDao reservaDao;
 
     private Service() {
-        this("data.xml");
+        usuarioDao = new UsuarioDao();
+        funcionarioDao = new FuncionarioDao();
+        categoriaDao = new CategoriaRecursoDao();
+        recursoDao = new RecursoDao();
+        reservaDao = new ReservaDao();
     }
 
-    private Service(String path) {
-        this.path = path;
-        try {
-            data = new XmlPersister(path).load();
-        } catch (Exception e) {
-            data = new Data();
-            seedAdmin();
-        }
-    }
-
-    private void seedAdmin() {
-        data.getUsuarios().add(new Usuario("admin", "admin", Usuario.ADMIN));
-    }
-
+    /**
+     * Antes volcaba los datos al archivo XML. Con MySQL cada operacion queda
+     * guardada en el momento, asi que no hay nada que persistir al cerrar.
+     * Se conserva el metodo porque el Frontend lo recibe como accion de cierre.
+     */
     public void stop() {
-        try {
-            new XmlPersister(path).store(data);
-        } catch (Exception e) {
-            System.out.println(e);
-        }
     }
 
     static void resetForTesting() {
+        Database.resetForTesting();
         theInstance = new Service();
-        theInstance.data = new Data();
     }
 
+    /**
+     * Se conserva la firma que usan las pruebas existentes. El parametro era la
+     * ruta del XML y ya no se usa: la conexion viene de reservas.properties.
+     */
     static void resetForTesting(String path) {
-        theInstance = new Service(path);
+        Database.resetForTesting();
+        theInstance = new Service();
     }
 
     // =============== LOGIN ===============
     @Override
     public Usuario login(String id, String clave) throws Exception {
-        Usuario result = data.getUsuarios().stream()
-                .filter(u -> u.getId().equals(id))
-                .findFirst()
-                .orElse(null);
-        if (result == null) throw new Exception("Usuario no existe");
+        Usuario result = usuarioDao.read(id); // lanza "Usuario no existe"
         if (!result.getClave().equals(clave)) throw new Exception("Clave incorrecta");
         return result;
     }
 
     @Override
     public void changePassword(String id, String claveActual, String claveNueva) throws Exception {
-        Usuario u = data.getUsuarios().stream()
-                .filter(i -> i.getId().equals(id))
-                .findFirst()
-                .orElse(null);
-        if (u == null) throw new Exception("Usuario no existe");
+        Usuario u = usuarioDao.read(id); // lanza "Usuario no existe"
         if (!u.getClave().equals(claveActual)) throw new Exception("Clave actual incorrecta");
-        u.setClave(claveNueva);
+        usuarioDao.updateClave(id, claveNueva);
     }
 
     // =============== FUNCIONARIOS ===============
     @Override
     public void create(Funcionario e) throws Exception {
-        Usuario result = data.getUsuarios().stream()
-                .filter(i -> i.getId().equals(e.getId()))
-                .findFirst()
-                .orElse(null);
-        if (result == null) {
-            e.setClave(e.getId());
-            data.getUsuarios().add(e);
-        } else {
-            throw new Exception("Funcionario ya existe");
-        }
+        funcionarioDao.create(e);
     }
 
     public Funcionario read(Funcionario e) throws Exception {
-        Funcionario result = findFuncionario(e.getId());
-        if (result != null) return result;
-        throw new Exception("Funcionario no existe");
+        return funcionarioDao.read(e);
     }
 
     @Override
     public void update(Funcionario e) throws Exception {
-        Funcionario result = findFuncionario(e.getId());
-        if (result == null) throw new Exception("Funcionario no existe");
-        result.setNombre(e.getNombre());
-        result.setTelefono(e.getTelefono());
+        funcionarioDao.update(e);
     }
 
     @Override
     public void delete(Funcionario e) throws Exception {
-        Funcionario result = findFuncionario(e.getId());
-        if (result == null) throw new Exception("Funcionario no existe");
-        if (data.getReservas().stream().anyMatch(r -> r.getFuncionario() != null
-                && result.getId().equals(r.getFuncionario().getId())))
-            throw new Exception("No se puede eliminar el funcionario porque tiene reservas asociadas");
-        data.getUsuarios().remove(result);
+        funcionarioDao.delete(e);
     }
 
     @Override
     public List<Funcionario> search(Funcionario e) {
-        return data.getUsuarios().stream()
-                .filter(u -> u instanceof Funcionario)
-                .map(u -> (Funcionario) u)
-                .filter(f -> e.getId().isEmpty() || f.getId().toLowerCase().contains(e.getId().toLowerCase()))
-                .filter(f -> e.getNombre().isEmpty() || f.getNombre().toLowerCase().contains(e.getNombre().toLowerCase()))
-                .sorted(Comparator.comparing(Funcionario::getNombre))
-                .collect(Collectors.toList());
-    }
-
-    private Funcionario findFuncionario(String id) {
-        return data.getUsuarios().stream()
-                .filter(u -> u instanceof Funcionario)
-                .map(u -> (Funcionario) u)
-                .filter(f -> f.getId().equals(id))
-                .findFirst()
-                .orElse(null);
+        try {
+            return funcionarioDao.search(e);
+        } catch (Exception ex) {
+            System.err.println("Error buscando funcionarios: " + ex.getMessage());
+            return new ArrayList<>();
+        }
     }
 
     // =============== CATEGORIAS DE RECURSO ===============
     @Override
     public void create(CategoriaRecurso e) throws Exception {
-        e.setId(nextCategoriaId());
-        data.getCategorias().add(e);
+        categoriaDao.create(e);
     }
 
     public CategoriaRecurso read(CategoriaRecurso e) throws Exception {
-        CategoriaRecurso result = data.getCategorias().stream()
-                .filter(i -> i.getId().equals(e.getId()))
-                .findFirst()
-                .orElse(null);
-        if (result != null) return result;
-        throw new Exception("Categoria no existe");
+        return categoriaDao.read(e);
     }
 
     @Override
     public void update(CategoriaRecurso e) throws Exception {
-        CategoriaRecurso result = read(e);
-        result.setDescripcion(e.getDescripcion());
+        categoriaDao.update(e);
     }
 
     @Override
     public void delete(CategoriaRecurso e) throws Exception {
-        CategoriaRecurso result = read(e);
-        if (data.getRecursos().stream().anyMatch(r -> r.getCategoria() != null
-                && result.getId().equals(r.getCategoria().getId())))
-            throw new Exception("No se puede eliminar la categoría porque tiene recursos asociados");
-        data.getCategorias().remove(result);
+        categoriaDao.delete(e);
     }
 
     @Override
     public List<CategoriaRecurso> search(CategoriaRecurso e) {
-        return data.getCategorias().stream()
-                .filter(i -> i.getDescripcion().toLowerCase().contains(e.getDescripcion().toLowerCase()))
-                .sorted(Comparator.comparing(CategoriaRecurso::getDescripcion))
-                .collect(Collectors.toList());
+        try {
+            return categoriaDao.findByDescripcion(e);
+        } catch (Exception ex) {
+            System.err.println("Error buscando categorias: " + ex.getMessage());
+            return new ArrayList<>();
+        }
     }
 
     @Override
     public List<CategoriaRecurso> findAllCategorias() {
-        return data.getCategorias();
-    }
-
-    private String nextCategoriaId() {
-        int max = data.getCategorias().stream()
-                .map(c -> c.getId().replace("CAT-", ""))
-                .mapToInt(Integer::parseInt)
-                .max()
-                .orElse(0);
-        return String.format("CAT-%06d", max + 1);
+        try {
+            return categoriaDao.findAll();
+        } catch (Exception ex) {
+            System.err.println("Error consultando categorias: " + ex.getMessage());
+            return new ArrayList<>();
+        }
     }
 
     // =============== RECURSOS ===============
     @Override
     public void create(Recurso e) throws Exception {
-        Recurso result = data.getRecursos().stream()
-                .filter(i -> i.getId().equals(e.getId()))
-                .findFirst()
-                .orElse(null);
-        if (result == null) {
-            data.getRecursos().add(e);
-        } else {
-            throw new Exception("Recurso ya existe");
-        }
+        recursoDao.create(e);
     }
 
     public Recurso read(Recurso e) throws Exception {
-        Recurso result = data.getRecursos().stream()
-                .filter(i -> i.getId().equals(e.getId()))
-                .findFirst()
-                .orElse(null);
-        if (result != null) return result;
-        throw new Exception("Recurso no existe");
+        return recursoDao.read(e);
     }
 
     @Override
     public void update(Recurso e) throws Exception {
-        Recurso result = read(e);
-        result.setCategoria(e.getCategoria());
-        result.setDescripcion(e.getDescripcion());
+        recursoDao.update(e);
     }
 
     @Override
     public void delete(Recurso e) throws Exception {
-        Recurso result = read(e);
-        if (data.getReservas().stream().anyMatch(r -> r.getRecursos().stream()
-                .anyMatch(rec -> rec != null && result.getId().equals(rec.getId()))))
-            throw new Exception("No se puede eliminar el recurso porque tiene reservas asociadas");
-        data.getRecursos().remove(result);
+        recursoDao.delete(e);
     }
 
     @Override
     public List<Recurso> search(CategoriaRecurso categoria, String descripcion) {
-        return data.getRecursos().stream()
-                .filter(r -> categoria == null || categoria.getId() == null || categoria.getId().isEmpty()
-                        || r.getCategoria().getId().equals(categoria.getId()))
-                .filter(r -> descripcion == null || r.getDescripcion().toLowerCase().contains(descripcion.toLowerCase()))
-                .sorted(Comparator.comparing(Recurso::getDescripcion))
-                .collect(Collectors.toList());
+        try {
+            return recursoDao.search(categoria, descripcion);
+        } catch (Exception ex) {
+            System.err.println("Error buscando recursos: " + ex.getMessage());
+            return new ArrayList<>();
+        }
     }
 
     // =============== RESERVAS ===============
     @Override
     public List<Reserva> findReservas(Funcionario funcionario) {
-        return data.getReservas().stream()
-                .filter(r -> r.getFuncionario().getId().equals(funcionario.getId()))
-                .sorted(Comparator.comparing(Reserva::getFecha).thenComparing(Reserva::getHoraInicio))
-                .collect(Collectors.toList());
+        try {
+            return reservaDao.findByFuncionario(funcionario);
+        } catch (Exception ex) {
+            System.err.println("Error consultando reservas: " + ex.getMessage());
+            return new ArrayList<>();
+        }
     }
 
     @Override
@@ -259,89 +207,78 @@ public class Service implements IService {
                                 LocalTime horaInicio, LocalTime horaFin,
                                 List<CategoriaRecurso> categoriasSolicitadas) throws Exception {
 
-        if (categoriasSolicitadas.isEmpty()) throw new Exception("Debe seleccionar al menos una categoria");
-        if (horaFin.isBefore(horaInicio) || horaFin.equals(horaInicio))
-            throw new Exception("La hora de fin debe ser posterior a la hora de inicio");
+        // Reglas que no necesitan consultar datos. Viven en ReglasReserva para
+        // poder probarlas sin base de datos.
+        ReglasReserva.validarSolicitud(categoriasSolicitadas, fecha, horaInicio, horaFin,
+                LocalDate.now(), LocalTime.now());
 
-        LocalDate hoy = LocalDate.now();
-        if (fecha.isBefore(hoy) || (fecha.equals(hoy) && !horaInicio.isAfter(LocalTime.now())))
-            throw new Exception("No se puede crear una reserva en una fecha u hora pasada");
+        // Comprobar disponibilidad y guardar tienen que ser indivisibles: si se
+        // separan, dos Frontend podrian quedarse con el mismo recurso.
+        synchronized (reservaDao.lock()) {
+            List<Recurso> asignados = new ArrayList<>();
+            List<CategoriaRecurso> noDisponibles = new ArrayList<>();
 
-        List<CategoriaRecurso> noDisponibles = categoriasSolicitadas.stream()
-                .filter(cat -> buscarRecursoLibre(cat, fecha, horaInicio, horaFin, null) == null)
-                .collect(Collectors.toList());
+            for (CategoriaRecurso cat : categoriasSolicitadas) {
+                Recurso libre = reservaDao.buscarRecursoLibre(cat, fecha, horaInicio, horaFin, null);
+                if (libre == null || yaAsignado(asignados, libre)) {
+                    noDisponibles.add(cat);
+                } else {
+                    asignados.add(libre);
+                }
+            }
 
-        if (!noDisponibles.isEmpty()) {
-            String nombres = noDisponibles.stream()
-                    .map(CategoriaRecurso::getDescripcion)
-                    .collect(Collectors.joining(", "));
-            throw new Exception("No hay disponibilidad para: " + nombres);
+            if (!noDisponibles.isEmpty()) {
+                String nombres = noDisponibles.stream()
+                        .map(CategoriaRecurso::getDescripcion)
+                        .collect(Collectors.joining(", "));
+                throw new Exception("No hay disponibilidad para: " + nombres);
+            }
+
+            Reserva reserva = new Reserva(reservaDao.nextId(), funcionario, actividad,
+                    fecha, horaInicio, horaFin);
+            reserva.getRecursos().addAll(asignados);
+            reservaDao.create(reserva);
+            return reserva;
         }
+    }
 
-        Reserva reserva = new Reserva(nextReservaId(), funcionario, actividad, fecha, horaInicio, horaFin);
-        for (CategoriaRecurso cat : categoriasSolicitadas) {
-            reserva.getRecursos().add(buscarRecursoLibre(cat, fecha, horaInicio, horaFin, null));
-        }
-        data.getReservas().add(reserva);
-        return reserva;
+    /**
+     * Evita asignar dos veces el mismo recurso a una reserva. La version con
+     * XML lo permitia en silencio; en MySQL la llave primaria compuesta de
+     * reserva_recurso lo rechazaria con un error poco claro.
+     */
+    private boolean yaAsignado(List<Recurso> asignados, Recurso candidato) {
+        return asignados.stream().anyMatch(r -> r.getId().equals(candidato.getId()));
     }
 
     @Override
     public void cancelarReserva(Reserva e) throws Exception {
-        Reserva result = data.getReservas().stream()
-                .filter(i -> i.getId().equals(e.getId()))
-                .findFirst()
-                .orElse(null);
-        if (result == null) throw new Exception("Reserva no existe");
-        LocalDate hoy = LocalDate.now();
-        if (result.getFecha().isBefore(hoy)
-                || (result.getFecha().equals(hoy) && !result.getHoraInicio().isAfter(LocalTime.now())))
+        Reserva result = reservaDao.read(e.getId()); // lanza "Reserva no existe"
+        if (ReglasReserva.esPasado(result.getFecha(), result.getHoraInicio(),
+                LocalDate.now(), LocalTime.now()))
             throw new Exception("No se puede cancelar una reserva pasada o que ya comenzó");
-        result.setEstado(Reserva.CANCELADA);
-    }
-
-    private Recurso buscarRecursoLibre(CategoriaRecurso categoria, LocalDate fecha,
-                                       LocalTime horaInicio, LocalTime horaFin, String reservaIdExcluida) {
-        List<Recurso> recursosDeCategoria = data.getRecursos().stream()
-                .filter(r -> r.getCategoria().getId().equals(categoria.getId()))
-                .collect(Collectors.toList());
-
-        for (Recurso r : recursosDeCategoria) {
-            boolean ocupado = data.getReservas().stream()
-                    .filter(res -> res.getEstado().equals(Reserva.ACTIVA))
-                    .filter(res -> !res.getId().equals(reservaIdExcluida))
-                    .filter(res -> res.getFecha().equals(fecha))
-                    .filter(res -> res.getRecursos().stream().anyMatch(rec -> rec.getId().equals(r.getId())))
-                    .anyMatch(res -> horaInicio.isBefore(res.getHoraFin()) && horaFin.isAfter(res.getHoraInicio()));
-            if (!ocupado) return r;
-        }
-        return null;
-    }
-
-    private String nextReservaId() {
-        int max = data.getReservas().stream()
-                .map(r -> r.getId().replace("RES-", ""))
-                .mapToInt(Integer::parseInt)
-                .max()
-                .orElse(0);
-        return String.format("RES-%06d", max + 1);
+        reservaDao.cancelar(result);
     }
 
     // =============== CALENDARIZACION / ACTIVIDADES ===============
     @Override
     public List<Reserva> findReservasActivasPorFecha(LocalDate fecha) {
-        return data.getReservas().stream()
-                .filter(r -> r.getEstado().equals(Reserva.ACTIVA))
-                .filter(r -> r.getFecha().equals(fecha))
-                .collect(Collectors.toList());
+        try {
+            return reservaDao.findActivasPorFecha(fecha);
+        } catch (Exception ex) {
+            System.err.println("Error consultando la calendarizacion: " + ex.getMessage());
+            return new ArrayList<>();
+        }
     }
 
     @Override
     public List<Reserva> findReservasActivasPorSemana(LocalDate inicioSemana, LocalDate finSemana) {
-        return data.getReservas().stream()
-                .filter(r -> r.getEstado().equals(Reserva.ACTIVA))
-                .filter(r -> !r.getFecha().isBefore(inicioSemana) && !r.getFecha().isAfter(finSemana))
-                .collect(Collectors.toList());
+        try {
+            return reservaDao.findActivasEntre(inicioSemana, finSemana);
+        } catch (Exception ex) {
+            System.err.println("Error consultando las actividades: " + ex.getMessage());
+            return new ArrayList<>();
+        }
     }
 
     // =============== ESTADISTICAS ===============
@@ -374,7 +311,7 @@ public class Service implements IService {
         ReservaExtractorService aiService = dev.langchain4j.service.AiServices.create(
                 ReservaExtractorService.class, aiModel);
 
-        String listaCategorias = data.getCategorias().stream()
+        String listaCategorias = findAllCategorias().stream()
                 .map(CategoriaRecurso::getDescripcion)
                 .collect(Collectors.joining(", "));
 
