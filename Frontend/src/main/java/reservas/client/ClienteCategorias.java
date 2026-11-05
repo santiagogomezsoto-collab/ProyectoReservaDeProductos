@@ -4,6 +4,11 @@ import reservas.protocol.CategoriaDto;
 import reservas.protocol.Operaciones;
 import reservas.protocol.Respuesta;
 import reservas.protocol.Solicitud;
+import reservas.protocol.CanalObjetos;
+import reservas.protocol.FiltrosProtocolo;
+import reservas.protocol.Identificacion;
+import reservas.protocol.SesionCreada;
+import reservas.protocol.TipoConexion;
 
 import java.io.*;
 import java.net.*;
@@ -14,19 +19,15 @@ public final class ClienteCategorias {
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(host, puerto), 3000);
             socket.setSoTimeout(10000);
-            try (ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream())) {
-                out.flush();
-                try (ObjectInputStream in = new ObjectInputStream(socket.getInputStream())) {
-                    in.setObjectInputFilter(ObjectInputFilter.Config.createFilter(
-                            "maxdepth=5;maxrefs=50000;maxarray=10000;maxbytes=1048576;"
-                                    + "reservas.protocol.Respuesta;reservas.protocol.CategoriaDto;!*"));
-                    out.writeObject(new Solicitud(Operaciones.FIND_ALL_CATEGORIAS));
-                    out.flush();
-                    Object mensaje = in.readObject();
+            try (CanalObjetos canal = new CanalObjetos(socket)) {
+                    canal.enviar(new Identificacion(TipoConexion.SYNC, null));
+                    Object saludo = canal.recibir(FiltrosProtocolo.apertura());
+                    if (!(saludo instanceof SesionCreada)) throw new IOException("Identificacion rechazada");
+                    canal.enviar(new Solicitud(Operaciones.FIND_ALL_CATEGORIAS));
+                    Object mensaje = canal.recibir(FiltrosProtocolo.respuestas());
                     if (!(mensaje instanceof Respuesta respuesta)) throw new IOException("Respuesta invalida");
                     if (respuesta.error() != null) throw new IOException("Servidor: " + respuesta.error());
                     return respuesta.categorias();
-                }
             }
         }
     }

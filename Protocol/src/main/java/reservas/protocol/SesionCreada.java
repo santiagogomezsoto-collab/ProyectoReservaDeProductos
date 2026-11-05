@@ -2,7 +2,7 @@ package reservas.protocol;
 
 import java.io.Serializable;
 
-/** Acuse futuro del servidor tras autenticar SYNC; no implementa el handshake. */
+/** Acuse de sesion tecnica SYNC o de asociacion ASYNC; no concede autenticacion. */
 public record SesionCreada(String sesionId) implements Serializable {
     private static final long serialVersionUID = 1L;
     public SesionCreada {

@@ -1,56 +1,71 @@
 package reservas.server;
 
-import reservas.logic.Service;
-import reservas.protocol.CategoriaDto;
-import reservas.protocol.Operaciones;
-import reservas.protocol.Respuesta;
-import reservas.protocol.Solicitud;
-
+import reservas.protocol.*;
 import java.io.*;
-import java.net.Socket;
+import java.net.*;
 
-/** Atiende una solicitud y cierra la conexion. */
+/** Saludo inicial y ciclo SYNC; ASYNC solo se asocia, sin notificaciones en A2. */
 public final class Worker implements Runnable {
     private final Socket socket;
+    private final RegistroSesiones sesiones;
+    private final Despachador despachador;
+    private final Runnable liberar;
 
-    public Worker(Socket socket) {
+    Worker(Socket socket, RegistroSesiones sesiones, Despachador despachador, Runnable liberar) {
         this.socket = socket;
+        this.sesiones = sesiones;
+        this.despachador = despachador;
+        this.liberar = liberar;
     }
 
-    @Override
-    public void run() {
+    @Override public void run() {
+        SesionServidor sesion = null;
+        boolean sync = false;
         try (socket) {
             socket.setSoTimeout(10000);
-            try (ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream())) {
-                out.flush(); // Enviar cabecera antes de esperar la cabecera del cliente.
-                try (ObjectInputStream in = new ObjectInputStream(socket.getInputStream())) {
-                    in.setObjectInputFilter(ObjectInputFilter.Config.createFilter(
-                            "maxdepth=5;maxrefs=20;maxbytes=4096;reservas.protocol.Solicitud;!*"));
-                    Respuesta respuesta;
-                    try {
-                        Object mensaje = in.readObject();
-                        if (!(mensaje instanceof Solicitud solicitud)) {
-                            respuesta = new Respuesta(null, "Solicitud invalida");
-                        } else if (solicitud.operacion() != Operaciones.FIND_ALL_CATEGORIAS) {
-                            respuesta = new Respuesta(null, "Operacion no soportada: " + solicitud.operacion());
-                        } else {
-                            CategoriaDto[] categorias = Service.instance().findAllCategorias().stream()
-                                    .map(c -> new CategoriaDto(c.getId(), c.getDescripcion()))
-                                    .toArray(CategoriaDto[]::new);
-                            respuesta = new Respuesta(categorias, null);
+            try (CanalObjetos canal = new CanalObjetos(socket)) {
+                try {
+                    Object primero = canal.recibir(FiltrosProtocolo.identificacion());
+                    if (!(primero instanceof Identificacion id))
+                        throw new Rechazo(CodigoError.SOLICITUD_INVALIDA, "Se requiere identificacion");
+                    if (id.tipo() == TipoConexion.SYNC) {
+                        if (id.sesionId() != null)
+                            throw new Rechazo(CodigoError.SESION_INVALIDA, "SYNC requiere una sesion nueva");
+                        sync = true;
+                        sesion = sesiones.crear(socket);
+                        canal.enviar(new SesionCreada(sesion.id));
+                        // Tiempo maximo de inactividad de SYNC. Reconexion crea otra sesion.
+                        socket.setSoTimeout(300000);
+                        while (sesion.vigente()) {
+                            Object mensaje = canal.recibir(FiltrosProtocolo.solicitudes());
+                            if (!(mensaje instanceof Solicitud solicitud))
+                                throw new Rechazo(CodigoError.SOLICITUD_INVALIDA, "Se requiere una solicitud");
+                            canal.enviar(despachador.atender(sesion, solicitud));
                         }
-                    } catch (ClassNotFoundException | InvalidClassException e) {
-                        respuesta = new Respuesta(null, "Mensaje no admitido por el protocolo");
-                    } catch (RuntimeException e) {
-                        System.err.println("Error consultando categorias: " + e);
-                        respuesta = new Respuesta(null, "No se pudieron consultar las categorias");
+                    } else {
+                        sesion = sesiones.asociar(id.sesionId(), socket);
+                        canal.enviar(new SesionCreada(sesion.id));
+                        // Solo esperar EOF: no se admiten solicitudes por ASYNC.
+                        socket.setSoTimeout(0);
+                        canal.recibir(info -> java.io.ObjectInputFilter.Status.REJECTED);
+                        throw new Rechazo(CodigoError.SOLICITUD_INVALIDA, "ASYNC no admite solicitudes");
                     }
-                    out.writeObject(respuesta);
-                    out.flush();
+                } catch (Rechazo e) {
+                    canal.enviar(Respuesta.fallo(e.codigo, e.getMessage()));
+                } catch (ClassNotFoundException | ObjectStreamException e) {
+                    canal.enviar(Respuesta.fallo(CodigoError.SOLICITUD_INVALIDA, "Mensaje no admitido"));
                 }
             }
+        } catch (EOFException | SocketException | SocketTimeoutException ignored) {
+            // Desconexion o inactividad: limpiar sin imprimir datos del cliente.
         } catch (IOException e) {
-            System.err.println("Conexion finalizada: " + e.getMessage());
+            System.err.println("Conexion finalizada por un error de comunicacion");
+        } finally {
+            if (sesion != null) {
+                if (sync) sesiones.eliminar(sesion);
+                else sesion.separar(socket);
+            }
+            liberar.run();
         }
     }
 }

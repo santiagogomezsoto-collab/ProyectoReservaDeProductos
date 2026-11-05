@@ -28,6 +28,12 @@ public final class FiltrosProtocolo {
                 TipoConexion.class.getName(), Enum.class.getName(), String.class.getName()));
     }
 
+    /** Acuse de apertura o rechazo controlado; no admite resultados de negocio. */
+    public static ObjectInputFilter apertura() {
+        return filtro(Set.of(SesionCreada.class.getName(), Respuesta.class.getName(),
+                CodigoError.class.getName(), Enum.class.getName(), String.class.getName()));
+    }
+
     private static Set<String> datos() {
         return new HashSet<>(Set.of(UsuarioDto.class.getName(), FuncionarioDto.class.getName(),
                 CategoriaDto.class.getName(), RecursoDto.class.getName(), ReservaDto.class.getName(),

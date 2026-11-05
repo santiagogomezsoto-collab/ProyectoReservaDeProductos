@@ -1,51 +1,84 @@
 package reservas.server;
 
+import reservas.logic.IService;
 import reservas.logic.Service;
-
+import reservas.data.Database;
 import java.io.IOException;
 import java.net.*;
+import java.util.Set;
 import java.util.concurrent.*;
 
-/** Servidor local de consulta. Argumentos: [puerto], por defecto 5000. */
-public final class Servidor {
+/** Acepta conexiones; cada Worker posee exclusivamente sus streams. */
+public final class Servidor implements AutoCloseable {
+    private final ServerSocket servidor;
+    private final RegistroSesiones sesiones = new RegistroSesiones();
+    private final Despachador despachador;
+    private final Set<Socket> conexiones = ConcurrentHashMap.newKeySet();
+    private final ExecutorService workers = new ThreadPoolExecutor(0, 64, 60L,
+            TimeUnit.SECONDS, new SynchronousQueue<>());
+    private volatile boolean cerrado;
+
+    public Servidor(IService service, Object bloqueo, InetAddress direccion, int puerto) throws IOException {
+        despachador = new Despachador(java.util.Objects.requireNonNull(service),
+                java.util.Objects.requireNonNull(bloqueo));
+        servidor = new ServerSocket();
+        try { servidor.bind(new InetSocketAddress(direccion, puerto)); }
+        catch (IOException e) { servidor.close(); workers.shutdownNow(); throw e; }
+    }
+
+    public int puerto() { return servidor.getLocalPort(); }
+    int sesionesActivas() { return sesiones.cantidad(); }
+    int conexionesAsync() { return sesiones.conexionesAsync(); }
+
+    public void servir() throws IOException {
+        while (!cerrado) {
+            Socket cliente;
+            try { cliente = servidor.accept(); }
+            catch (SocketException e) { if (cerrado) return; throw e; }
+            conexiones.add(cliente);
+            if (cerrado) { liberar(cliente); continue; }
+            try {
+                workers.execute(new Worker(cliente, sesiones, despachador, () -> liberar(cliente)));
+            } catch (RejectedExecutionException e) {
+                liberar(cliente);
+            }
+        }
+    }
+
+    private void liberar(Socket cliente) {
+        conexiones.remove(cliente);
+        SesionServidor.cerrarSocket(cliente);
+    }
+
+    @Override public void close() {
+        cerrado = true;
+        try { servidor.close(); } catch (IOException ignored) { }
+        conexiones.forEach(this::liberar);
+        workers.shutdownNow();
+        sesiones.cerrar();
+    }
+
+    /** Argumentos: [puerto] [direccion de escucha]. Por defecto solo loopback. */
     public static void main(String[] args) {
         try {
-            if (args.length > 1) throw new IllegalArgumentException("Uso: Servidor [puerto]");
+            if (args.length > 2) throw new IllegalArgumentException();
             int puerto = args.length == 0 ? 5000 : Integer.parseInt(args[0]);
-            if (puerto < 1 || puerto > 65535) throw new IllegalArgumentException("Puerto invalido");
-            // Inicializar el singleton antes de publicar trabajos a los hilos.
-            // Aqui se abre la conexion con MySQL: si falla, mejor enterarse al
-            // arrancar que en la primera peticion de un cliente.
-            Service.instance();
-            ThreadPoolExecutor workers = new ThreadPoolExecutor(4, 4, 0L, TimeUnit.MILLISECONDS,
-                    new ArrayBlockingQueue<>(16));
-            try (ServerSocket servidor = new ServerSocket()) {
-                servidor.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), puerto));
-                System.out.println("Servidor escuchando en 127.0.0.1:" + puerto);
-                while (!Thread.currentThread().isInterrupted()) {
-                    Socket cliente = servidor.accept();
-                    try {
-                        workers.execute(new Worker(cliente));
-                    } catch (RejectedExecutionException e) {
-                        cliente.close();
-                        System.err.println("Servidor ocupado: conexion rechazada");
-                    }
+            if (puerto < 1 || puerto > 65535) throw new IllegalArgumentException();
+            InetAddress direccion = InetAddress.getByName(args.length < 2 ? "127.0.0.1" : args[1]);
+            // Database comparte una Connection: bloquear operaciones completas.
+            try (Servidor app = new Servidor(Service.instance(), Database.instance(), direccion, puerto)) {
+                Thread cierre = new Thread(app::close, "cierre-servidor");
+                Runtime.getRuntime().addShutdownHook(cierre);
+                try {
+                    System.out.println("Servidor escuchando en " + direccion.getHostAddress() + ":" + app.puerto());
+                    app.servir();
+                } finally {
+                    try { Runtime.getRuntime().removeShutdownHook(cierre); }
+                    catch (IllegalStateException ignored) { }
                 }
-            } finally {
-                // Service.stop() ya no persiste nada: con MySQL cada operacion
-                // queda guardada en el momento.
-                workers.shutdown();
             }
-        } catch (IOException | IllegalArgumentException e) {
-            System.err.println("No se pudo iniciar el servidor: " + e.getMessage());
-            System.exit(1);
-        } catch (IllegalStateException e) {
-            // La lanza Database cuando no puede conectarse a MySQL o cuando
-            // falta reservas.properties en el classpath.
-            System.err.println("No se pudo iniciar el servidor: " + e.getMessage());
-            System.err.println("Revise que MySQL este corriendo y que exista"
-                    + " Backend/src/main/resources/reservas.properties");
-            System.exit(1);
+        } catch (Exception e) {
+            System.err.println("No se pudo iniciar o mantener el servidor. Revise configuracion local y puerto.");
         }
     }
 }

@@ -104,6 +104,11 @@ en conexiones persistentes. No ampliar a comodines de paquetes ni desactivar fil
 
 ## Identificacion futura (sin conexiones implementadas)
 
+Nota posterior: A2 concreta este flujo en [Backend/README-A2.md](../Backend/README-A2.md).
+SesionCreada ahora acusa la sesion tecnica al abrir SYNC; solo LOGIN autentica
+y solo entonces se permite asociar ASYNC. La secuencia siguiente conserva la
+propuesta historica de A1.
+
 1. El cliente abre SYNC y envia Identificacion(SYNC, null).
 2. Se autentica mediante LOGIN; Backend genera un identificador opaco e
    impredecible, guarda la asociacion con el usuario y emite SesionCreada.
