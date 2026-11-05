@@ -8,6 +8,11 @@ import javax.swing.*;
 public class Application {
     private static IService service;
     private static Runnable onClose;
+    private static reservas.presentation.alertas.Controller alertas;
+
+    public static reservas.presentation.alertas.Controller getAlertas() {
+        return alertas;
+    }
 
     public static void start(IService service, Runnable onClose) {
         try {
@@ -37,7 +42,10 @@ public class Application {
     private static void doRun() {
         JFrame window = new JFrame("Sistema de Reservas");
         JTabbedPane tabbedPane = new JTabbedPane();
-        window.setContentPane(tabbedPane);
+        JPanel root = new JPanel(new java.awt.BorderLayout());
+        root.add(tabbedPane, java.awt.BorderLayout.CENTER);
+        root.add(buildAlertasPanel(), java.awt.BorderLayout.EAST);
+        window.setContentPane(root);
 
         window.setTitle("Sistema de Reservas - " + Sesion.getUsuario().getId() + " (" + Sesion.getUsuario().getRol() + ")");
 
@@ -58,7 +66,7 @@ public class Application {
                 break;
         }
 
-        window.setSize(1200, 750);
+        window.setSize(1350, 750);
         window.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         window.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
@@ -117,6 +125,13 @@ public class Application {
         reservas.presentation.estadisticas.View view = new reservas.presentation.estadisticas.View();
         reservas.presentation.estadisticas.Model model = new reservas.presentation.estadisticas.Model();
         new reservas.presentation.estadisticas.Controller(view, model, service);
+        return view.getPanel();
+    }
+
+    private static JPanel buildAlertasPanel() {
+        reservas.presentation.alertas.View view = new reservas.presentation.alertas.View();
+        reservas.presentation.alertas.Model model = new reservas.presentation.alertas.Model();
+        alertas = new reservas.presentation.alertas.Controller(view, model);
         return view.getPanel();
     }
 
