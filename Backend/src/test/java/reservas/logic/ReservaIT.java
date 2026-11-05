@@ -4,9 +4,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -15,23 +12,18 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ReservaIT {
 
-    private String tempFilePath;
-
     @BeforeEach
-    void setUp() throws IOException {
-        File tempFile = Files.createTempFile("reservas-test", ".xml").toFile();
-        tempFile.delete();
-        tempFilePath = tempFile.getAbsolutePath();
-        Service.resetForTesting(tempFilePath);
+    void setUp() throws Exception {
+        PruebaBase.reiniciar();
     }
 
     @AfterEach
-    void tearDown() {
-        new File(tempFilePath).delete();
+    void tearDown() throws Exception {
+        PruebaBase.limpiar();
     }
 
     @Test
-    void reservaCreadaSeGuardaYSeRecuperaCorrectamenteDelXml() throws Exception {
+    void reservaCreadaSeGuardaYSeRecuperaCorrectamenteDeMySql() throws Exception {
         LocalDate hoy = LocalDate.now();
         LocalDate futura = hoy.plusDays(10);
         CategoriaRecurso categoria = new CategoriaRecurso("", "Sala de Reuniones");
@@ -50,7 +42,7 @@ class ReservaIT {
         String idReserva = reserva.getId();
 
         Service.instance().stop();
-        Service.resetForTesting(tempFilePath);
+        Service.resetForTesting(); // reconecta: todo lo leido viene de MySQL
 
         Funcionario funcionarioRecargado = Service.instance().read(new Funcionario("f100", "", "", ""));
         assertEquals("Diana Solis", funcionarioRecargado.getNombre());
@@ -90,7 +82,7 @@ class ReservaIT {
         Service.instance().cancelarReserva(reserva);
         Service.instance().stop();
 
-        Service.resetForTesting(tempFilePath);
+        Service.resetForTesting(); // reconecta: todo lo leido viene de MySQL
 
         List<Reserva> reservas = Service.instance().findReservas(funcionario);
         assertEquals(1, reservas.size());

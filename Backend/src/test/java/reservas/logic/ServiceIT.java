@@ -2,6 +2,7 @@ package reservas.logic;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import reservas.data.ReservaDao;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -9,11 +10,11 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class ServiceTest {
+class ServiceIT {
 
     @BeforeEach
-    void setUp() {
-        Service.resetForTesting();
+    void setUp() throws Exception {
+        PruebaBase.reiniciar();
     }
 
     @Test
@@ -124,25 +125,35 @@ class ServiceTest {
     @Test
     void cancelarReservaPasadaLanzaExcepcion() throws Exception {
         LocalDate hoy = LocalDate.now();
-        LocalDate futura = hoy.plusDays(10);
         CategoriaRecurso cat = new CategoriaRecurso("", "Proyector");
         Service.instance().create(cat);
-        Service.instance().create(new Recurso("PROY-1", cat, "Proyector #1"));
+        Recurso recurso = new Recurso("PROY-1", cat, "Proyector #1");
+        Service.instance().create(recurso);
 
         Funcionario func = new Funcionario("f3", "f3", "Luis Mora", "2222");
         Service.instance().create(func);
 
-        Reserva reserva = Service.instance().crearReserva(func, "Charla",
-                futura, LocalTime.of(9, 0), LocalTime.of(10, 0), List.of(cat));
-
-        // Preparar una reserva historica solo en memoria para probar la cancelacion.
-        reserva.setFecha(hoy.minusDays(1));
+        // Service.crearReserva rechaza las fechas pasadas, y con razon. Para
+        // probar la cancelacion de una reserva historica hay que insertarla
+        // directamente por el DAO, saltandose esa regla a proposito.
+        //
+        // Antes esta prueba cambiaba la fecha del objeto en memoria. Con XML
+        // funcionaba porque el Service devolvia esa misma instancia; con MySQL
+        // cancelarReserva vuelve a leer la fila y no veria el cambio.
+        Reserva pasada = new Reserva("RES-000001", func, "Charla del mes pasado",
+                hoy.minusDays(1), LocalTime.of(9, 0), LocalTime.of(10, 0));
+        pasada.getRecursos().add(recurso);
+        new ReservaDao().create(pasada);
 
         Exception ex = assertThrows(Exception.class, () ->
-                Service.instance().cancelarReserva(reserva));
+                Service.instance().cancelarReserva(pasada));
 
         assertEquals("No se puede cancelar una reserva pasada o que ya comenzó", ex.getMessage());
-        assertEquals(Reserva.ACTIVA, reserva.getEstado());
+
+        // La fila siguio ACTIVA en la base: la cancelacion no se aplico.
+        List<Reserva> delFuncionario = Service.instance().findReservas(func);
+        assertEquals(1, delFuncionario.size());
+        assertEquals(Reserva.ACTIVA, delFuncionario.get(0).getEstado());
     }
 
     @Test

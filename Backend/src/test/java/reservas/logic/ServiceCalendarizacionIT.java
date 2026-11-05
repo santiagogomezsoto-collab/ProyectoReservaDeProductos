@@ -12,11 +12,11 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class ServiceCalendarizacionTest {
+class ServiceCalendarizacionIT {
 
     @BeforeEach
-    void setUp() {
-        Service.resetForTesting();
+    void setUp() throws Exception {
+        PruebaBase.reiniciar();
     }
 
     @Test

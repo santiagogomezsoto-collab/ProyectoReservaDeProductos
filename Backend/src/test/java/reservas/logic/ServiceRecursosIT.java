@@ -7,11 +7,11 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class ServiceRecursosTest {
+class ServiceRecursosIT {
 
     @BeforeEach
-    void setUp() {
-        Service.resetForTesting();
+    void setUp() throws Exception {
+        PruebaBase.reiniciar();
     }
 
     @Test
