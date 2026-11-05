@@ -5,7 +5,8 @@ import reservas.logic.Service;
 import javax.swing.SwingUtilities;
 
 /**
- * Arranque local temporal hasta integrar el Proxy y el servidor.
+ * Herramienta local opcional del proyecto raiz; no es el arranque del Frontend.
+ * El cliente independiente utiliza reservas.FrontendApplication en Frontend.
  * La persistencia es MySQL: la conexion sale de reservas.properties, que viaja
  * en el classpath, asi que ya no depende del directorio de trabajo.
  */

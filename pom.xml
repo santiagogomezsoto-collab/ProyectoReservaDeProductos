@@ -15,6 +15,12 @@
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
         <!-- IService se usa directamente en LocalApplication, asi que se declara
              de forma explicita en vez de depender de que llegue por
              transitividad a traves de Frontend o Backend. Sin esto, Maven
@@ -26,7 +32,8 @@
             <version>1.0-SNAPSHOT</version>
         </dependency>
 
-        <!-- Composicion local temporal; retirar al integrar el Proxy y el servidor. -->
+        <!-- Herramienta local opcional y pruebas entre modulos.
+             El arranque remoto se compila y ejecuta solo desde Frontend/pom.xml. -->
         <dependency>
             <groupId>org.example</groupId>
             <artifactId>reservas-frontend</artifactId>
@@ -38,6 +45,16 @@
             <version>1.0-SNAPSHOT</version>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+            </plugin>
+        </plugins>
+    </build>
 
 
 </project>
