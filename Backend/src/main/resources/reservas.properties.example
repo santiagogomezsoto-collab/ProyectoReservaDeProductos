@@ -1,0 +1,16 @@
+# Plantilla de conexion a MySQL. ESTE archivo si se versiona (no lleva clave).
+#
+# Para trabajar: copielo en la misma carpeta como  reservas.properties
+# y escriba su propia clave. Ese archivo queda excluido por .gitignore.
+#
+#   Backend/src/main/resources/reservas.properties
+#
+# La ruta importa: Database lo busca en el classpath con getResourceAsStream,
+# y Maven solo publica en el classpath lo que esta bajo src/main/resources.
+
+database_driver=com.mysql.cj.jdbc.Driver
+database_server=localhost
+database_port=3306
+database_name=reservas_proyecto2
+database_user=root
+database_password=

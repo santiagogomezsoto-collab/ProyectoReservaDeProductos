@@ -15,6 +15,17 @@
     </properties>
 
     <dependencies>
+        <!-- IService se usa directamente en LocalApplication, asi que se declara
+             de forma explicita en vez de depender de que llegue por
+             transitividad a traves de Frontend o Backend. Sin esto, Maven
+             compila (la transitividad lo resuelve) pero IntelliJ no, porque no
+             exporta las dependencias transitivas entre modulos. -->
+        <dependency>
+            <groupId>org.example</groupId>
+            <artifactId>reservas-protocol</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+
         <!-- Composicion local temporal; retirar al integrar el Proxy y el servidor. -->
         <dependency>
             <groupId>org.example</groupId>

@@ -37,3 +37,20 @@ build/
 
 ### Mac OS ###
 .DS_Store
+### Material de referencia personal (NO entregable) ###
+# Enunciados, guias y notas de estudio: se consultan localmente, no se versionan.
+*.pdf
+Estiloprofe.md
+GUIA_INTEGRAL_PROYECTO_II_EQUIPO_Y_AGENTES.md
+EIF206*
+Nueva carpeta/
+
+### Credenciales de base de datos ###
+# El archivo real con usuario/clave de MySQL nunca se sube.
+# Se versiona unicamente la plantilla *.properties.example
+# Regla amplia: CUALQUIER .properties de resources queda fuera,
+# sin importar como se llame (reservas, mistareas, db...).
+**/src/main/resources/*.properties
+**/src/test/resources/*.properties
+!**/*.properties.example
+.env

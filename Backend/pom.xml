@@ -24,7 +24,14 @@
             <version>1.0-SNAPSHOT</version>
         </dependency>
 
-        <!-- JAXB (persistencia XML) -->
+        <!-- Driver JDBC de MySQL. La linea 8.4.x acompana al servidor 8.4.11. -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>8.4.0</version>
+        </dependency>
+
+        <!-- JAXB (persistencia XML; se retira cuando MySQL quede completo) -->
         <dependency>
             <groupId>jakarta.xml.bind</groupId>
             <artifactId>jakarta.xml.bind-api</artifactId>
