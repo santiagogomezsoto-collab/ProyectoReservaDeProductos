@@ -28,6 +28,12 @@ public final class FiltrosProtocolo {
                 TipoConexion.class.getName(), Enum.class.getName(), String.class.getName()));
     }
 
+    /** ASYNC no admite solicitudes, respuestas SYNC ni entidades de dominio. */
+    public static ObjectInputFilter notificaciones() {
+        return filtro(Set.of(ReservaCreada.class.getName(), String.class.getName(),
+                "java.time.Ser", "java.time.LocalDate", "java.time.LocalTime"));
+    }
+
     /** Acuse de apertura o rechazo controlado; no admite resultados de negocio. */
     public static ObjectInputFilter apertura() {
         return filtro(Set.of(SesionCreada.class.getName(), Respuesta.class.getName(),

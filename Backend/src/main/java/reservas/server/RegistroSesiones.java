@@ -1,6 +1,7 @@
 package reservas.server;
 
 import reservas.protocol.CodigoError;
+import reservas.protocol.ReservaCreada;
 import java.net.Socket;
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -33,6 +34,9 @@ final class RegistroSesiones {
     }
 
     void cerrar() { sesiones.values().forEach(this::eliminar); }
+    void notificar(String creador, ReservaCreada evento) {
+        sesiones.values().forEach(sesion -> sesion.notificar(creador, evento));
+    }
     int cantidad() { return sesiones.size(); }
     int conexionesAsync() { return (int) sesiones.values().stream().filter(SesionServidor::tieneAsync).count(); }
 }

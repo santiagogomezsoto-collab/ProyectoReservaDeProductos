@@ -3,6 +3,7 @@ package reservas;
 import reservas.client.ServiceProxy;
 import reservas.client.ServiceProxyException;
 import reservas.presentation.Sesion;
+import reservas.presentation.alertas.Alerta;
 import javax.swing.*;
 import java.awt.Window;
 
@@ -44,6 +45,10 @@ public final class FrontendApplication {
             try {
                 Application.start(proxy, cerrar);
                 if (!Sesion.isLoggedIn()) cerrar.run(); // Cancelar/cerrar el login tambien libera SYNC.
+                else proxy.iniciarAlertas(evento -> Application.getAlertas().agregar(new Alerta(
+                        evento.id(), evento.encargado(), evento.actividad(), evento.fecha().toString(),
+                        evento.desde().toString(), evento.hasta().toString(), java.util.List.of(evento.recursos()))),
+                        FrontendApplication::mostrarError);
             } catch (RuntimeException e) {
                 cerrar.run();
                 for (Window ventana : Window.getWindows()) ventana.dispose();

@@ -4,7 +4,7 @@ import reservas.protocol.*;
 import java.io.*;
 import java.net.*;
 
-/** Saludo inicial y ciclo SYNC; ASYNC solo se asocia, sin notificaciones en A2. */
+/** Saludo y ciclo SYNC; ASYNC tiene un emisor independiente y este lector de cierre. */
 public final class Worker implements Runnable {
     private final Socket socket;
     private final RegistroSesiones sesiones;
@@ -40,11 +40,18 @@ public final class Worker implements Runnable {
                             Object mensaje = canal.recibir(FiltrosProtocolo.solicitudes());
                             if (!(mensaje instanceof Solicitud solicitud))
                                 throw new Rechazo(CodigoError.SOLICITUD_INVALIDA, "Se requiere una solicitud");
-                            canal.enviar(despachador.atender(sesion, solicitud));
+                            var usuario = sesion.usuario(); // Snapshot: el cierre puede invalidar la sesion durante IService.
+                            Respuesta respuesta = despachador.atender(sesion, solicitud);
+                            if (usuario != null && solicitud.operacion() == Operaciones.CREAR_RESERVA && respuesta.error() == null
+                                    && respuesta.resultadoTipado() instanceof Resultado.Reserva creada) {
+                                // IService ya confirmo la creacion; no depende de que llegue el acuse SYNC.
+                                sesiones.notificar(usuario.getId(), ReservaCreada.de(creada.reserva()));
+                            }
+                            canal.enviar(respuesta);
                         }
                     } else {
                         sesion = sesiones.asociar(id.sesionId(), socket);
-                        canal.enviar(new SesionCreada(sesion.id));
+                        sesion.iniciarEnvios(socket, canal);
                         // Solo esperar EOF: no se admiten solicitudes por ASYNC.
                         socket.setSoTimeout(0);
                         canal.recibir(info -> java.io.ObjectInputFilter.Status.REJECTED);

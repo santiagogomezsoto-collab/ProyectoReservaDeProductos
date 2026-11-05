@@ -18,6 +18,10 @@ public final class ServiceProxy implements IService, AutoCloseable {
     private final Socket socket = new Socket();
     private final CanalObjetos canal;
     private final String sesionId;
+    private final String host;
+    private final int puerto;
+    private volatile boolean autenticado;
+    private SocketListener listener;
     private final AtomicBoolean cerrado = new AtomicBoolean();
     private final ExecutorService solicitudes = Executors.newSingleThreadExecutor(r -> {
         Thread hilo = new Thread(r, "reservas-sync");
@@ -29,6 +33,8 @@ public final class ServiceProxy implements IService, AutoCloseable {
 
     /** timeoutMillis limita lecturas; el constructor debe invocarse fuera del EDT. */
     public ServiceProxy(String host, int puerto, int timeoutMillis) {
+        this.host = host;
+        this.puerto = puerto;
         if (host == null || host.isBlank() || puerto < 1 || puerto > 65535 || timeoutMillis <= 0)
             throw new IllegalArgumentException("Host, puerto o timeout invalidos");
         try {
@@ -54,6 +60,22 @@ public final class ServiceProxy implements IService, AutoCloseable {
     /** Secreto para asociar ASYNC en A5; nunca imprimirlo. No implica autenticacion. */
     public String getSesionId() { return sesionId; }
     public boolean isClosed() { return cerrado.get(); }
+
+    /** Llamar despues del login y de preparar el receptor MVC. No hace I/O en el llamador. */
+    public synchronized SocketListener iniciarAlertas(java.util.function.Consumer<ReservaCreada> receptor,
+                                                     java.util.function.Consumer<String> errores) {
+        if (isClosed() || !autenticado) throw new IllegalStateException("Se requiere una sesion autenticada");
+        if (listener == null || listener.isClosed()) {
+            listener = new SocketListener(host, puerto, sesionId, receptor, errores);
+            listener.iniciar();
+        }
+        return listener;
+    }
+
+    public synchronized void detenerAlertas() {
+        if (listener != null) listener.close();
+        listener = null;
+    }
 
     private static ServiceProxyException perdido(String mensaje) {
         return new ServiceProxyException(CodigoError.INTERNO, mensaje, true);
@@ -102,6 +124,7 @@ public final class ServiceProxy implements IService, AutoCloseable {
 
     @Override public void close() {
         if (cerrado.compareAndSet(false, true)) {
+            detenerAlertas();
             // Cerrar el socket desbloquea cualquier lectura en curso sin esperar su lock.
             try { socket.close(); } catch (IOException ignored) { }
             for (Runnable pendiente : solicitudes.shutdownNow())
@@ -114,7 +137,9 @@ public final class ServiceProxy implements IService, AutoCloseable {
     }
 
     @Override public Usuario login(String id, String clave) throws Exception {
-        return ConvertidorDto.usuario(pedir(LOGIN, new Argumentos.Login(id, clave), Resultado.Usuario.class).usuario());
+        Usuario usuario = ConvertidorDto.usuario(pedir(LOGIN, new Argumentos.Login(id, clave), Resultado.Usuario.class).usuario());
+        autenticado = true;
+        return usuario;
     }
     @Override public void changePassword(String id, String claveActual, String claveNueva) throws Exception {
         pedir(CHANGE_PASSWORD, new Argumentos.CambioClave(id, claveActual, claveNueva), Resultado.Confirmacion.class);
