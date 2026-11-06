@@ -4,9 +4,22 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.*;
 import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class FrontendArranqueTest {
     @Test void procesosSwingIndependientesAmbosRoles() throws Exception {
+        // Esta prueba lanza dos procesos Swing de verdad, y para armar su classpath
+        // necesita el Frontend ya compilado mas el volcado de dependency:build-classpath
+        // que documenta README-A6-ENTREGA. En un clon recien bajado esos archivos no
+        // existen todavia: antes la prueba moria con NoSuchFileException y "mvn test"
+        // terminaba en BUILD FAILURE, como si el proyecto estuviera roto. Omitirla con
+        // un motivo visible deja el fallo real distinguible de un paso previo faltante.
+        Path classpathFrontend = Path.of("Frontend/target/a34-classpath.txt");
+        assumeTrue(Files.exists(classpathFrontend)
+                        && Files.isDirectory(Path.of("Frontend/target/classes")),
+                "Falta el classpath del Frontend. Ejecute primero:"
+                + " mvn -f Frontend/pom.xml install dependency:build-classpath"
+                + " -Dmdep.outputFile=target/a34-classpath.txt");
         try (Servidor servidor = new Servidor(new ServicioSimulado().service(), new Object(),
                 java.net.InetAddress.getLoopbackAddress(), 0)) {
         Thread aceptador = new Thread(() -> {
