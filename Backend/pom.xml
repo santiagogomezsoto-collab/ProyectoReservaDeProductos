@@ -91,6 +91,16 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <version>3.2.5</version>
+                <configuration>
+                    <!-- Failsafe, a diferencia de Surefire, usa por defecto el JAR
+                         en vez de target/classes. Desde que maven-jar-plugin excluye
+                         **/*.properties del JAR (para no distribuir la clave de
+                         MySQL), el JAR ya no lleva reservas-test.properties y las
+                         pruebas IT no encontraban su configuracion de conexion.
+                         Apuntando Failsafe a target/classes se corren igual que
+                         antes y el JAR distribuible sigue sin credenciales. -->
+                    <classesDirectory>${project.build.outputDirectory}</classesDirectory>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
