@@ -54,3 +54,6 @@ Nueva carpeta/
 **/src/test/resources/*.properties
 !**/*.properties.example
 .env
+
+/data.xml
+/.idea/
